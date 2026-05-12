@@ -1,0 +1,72 @@
+import 'package:flutter/foundation.dart';
+import '../models/user.dart';
+import '../services/api.dart' as api;
+import '../services/session_storage.dart';
+import '../services/event_logger.dart';
+
+class AuthProvider extends ChangeNotifier {
+  String? _sessionToken;
+  User? _user;
+  bool _loading = true;
+
+  String? get sessionToken => _sessionToken;
+  User? get user => _user;
+  bool get loading => _loading;
+  bool get isAuthenticated => _sessionToken != null && _user != null;
+
+  AuthProvider() {
+    _hydrateSession();
+  }
+
+  Future<void> _hydrateSession() async {
+    final token = await getSession();
+    if (token == null || token.isEmpty) {
+      _loading = false;
+      notifyListeners();
+      return;
+    }
+    try {
+      final userData = await api.getMe(token: token);
+      _sessionToken = token;
+      _user = userData;
+      eventLogger.setToken(token);
+    } catch (e) {
+      await clearSession();
+      _sessionToken = null;
+      _user = null;
+    }
+    _loading = false;
+    notifyListeners();
+  }
+
+  Future<void> loginSuccess(String token) async {
+    await saveSession(token);
+    _sessionToken = token;
+    eventLogger.setToken(token);
+    try {
+      final userData = await api.getMe(token: token);
+      _user = userData;
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> logout() async {
+    final token = _sessionToken;
+    _sessionToken = null;
+    _user = null;
+    eventLogger.setToken(null);
+    notifyListeners();
+    try {
+      if (token != null) await api.logout(sessionToken: token);
+    } catch (_) {}
+    await clearSession();
+  }
+
+  Future<void> refreshUser() async {
+    try {
+      final userData = await api.getMe();
+      _user = userData;
+      notifyListeners();
+    } catch (_) {}
+  }
+}
