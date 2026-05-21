@@ -11,13 +11,13 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.rohan.flashfeed2
+      vars:
+        FLUTTER_SWIFT_PACKAGE_MANAGER_ENABLED: "false"
     scripts:
       - name: Disable Swift Package Manager
-        script: flutter config --no-enable-swift-package-manager
+        script: printf '{"enable-swift-package-manager":false}' > $HOME/.flutter_settings
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Patch Podfile to disable Swift Package Manager
-        script: sed -i '' '1s/^/ENV["FLUTTER_SWIFT_PACKAGE_MANAGER_ENABLED"] = "false"\n/' ios/Podfile
       - name: Install pods
         script: find . -name "Podfile" -execdir pod install \;
       - name: Flutter build IPA
