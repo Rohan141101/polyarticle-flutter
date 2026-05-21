@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:provider/provider.dart';
 import '../services/api.dart' as api;
 import '../providers/auth_provider.dart';
+import '../providers/settings_provider.dart';
 
 const _interests = [
   'Business 💼',
@@ -45,17 +46,13 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   int _step = 1;
 
-  // Step 1
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _showPassword = false;
   bool _showConfirm = false;
 
-  // Step 2
   final Set<String> _selectedInterests = {};
-
-  // Step 3
   String _selectedRegion = _regions.first;
 
   bool _loading = false;
@@ -69,6 +66,21 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  void _clearError() {
+    if (_error != null) setState(() => _error = null);
+  }
+
+  void _goBack() {
+    if (_step == 1) {
+      widget.onBack();
+    } else {
+      setState(() {
+        _error = null;
+        _step -= 1;
+      });
+    }
+  }
+
   void _goStep2() {
     final email = _emailController.text.trim().toLowerCase();
     final password = _passwordController.text;
@@ -78,8 +90,7 @@ class _SignupScreenState extends State<SignupScreen> {
       setState(() => _error = 'Please fill in all fields');
       return;
     }
-    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-    if (!emailRegex.hasMatch(email)) {
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
       setState(() => _error = 'Please enter a valid email address');
       return;
     }
@@ -144,9 +155,8 @@ class _SignupScreenState extends State<SignupScreen> {
         deviceOS: deviceOS,
       );
 
-      final token = result['sessionToken'] as String? ??
-          result['token'] as String? ??
-          '';
+      final token =
+          result['sessionToken'] as String? ?? result['token'] as String? ?? '';
 
       if (token.isNotEmpty && mounted) {
         await context.read<AuthProvider>().loginSuccess(token);
@@ -162,65 +172,80 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Back button
-              GestureDetector(
-                onTap: _step == 1 ? widget.onBack : () => setState(() {
-                  _error = null;
-                  _step -= 1;
-                }),
-                child: const Text(
-                  '← Back',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+    final isDark = context.watch<SettingsProvider>().darkMode;
+    final bg = isDark ? Colors.black : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final subColor = isDark ? const Color(0xFF888888) : Colors.grey;
+    final borderColor =
+        isDark ? const Color(0xFF333333) : const Color(0xFFEEEEEE);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goBack();
+      },
+      child: Scaffold(
+        backgroundColor: bg,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: _goBack,
+                  child: Text('← Back',
+                      style: TextStyle(color: subColor, fontSize: 14)),
                 ),
-              ),
-              const SizedBox(height: 24),
-              if (_step == 1) _buildStep1(),
-              if (_step == 2) _buildStep2(),
-              if (_step == 3) _buildStep3(),
-            ],
+                const SizedBox(height: 24),
+                if (_step == 1)
+                  _buildStep1(isDark, textColor, subColor, borderColor),
+                if (_step == 2)
+                  _buildStep2(isDark, textColor, subColor),
+                if (_step == 3)
+                  _buildStep3(isDark, textColor, subColor, borderColor),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildStep1() {
+  Widget _buildStep1(
+      bool isDark, Color textColor, Color subColor, Color borderColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Create account',
-          style: TextStyle(
-              fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black),
-        ),
+        Text('Create account',
+            style: TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w800, color: textColor)),
         const SizedBox(height: 8),
-        const Text(
-          'Join PolyArticle today',
-          style: TextStyle(fontSize: 15, color: Colors.grey),
-        ),
+        Text('Join PolyArticle today',
+            style: TextStyle(fontSize: 15, color: subColor)),
         const SizedBox(height: 32),
-        if (_error != null) _buildError(),
-        _buildTextField(
+        if (_error != null) _ErrorBox(_error!),
+        _AuthField(
           controller: _emailController,
           hint: 'Email',
           keyboardType: TextInputType.emailAddress,
           action: TextInputAction.next,
+          textColor: textColor,
+          subColor: subColor,
+          borderColor: borderColor,
+          onChanged: (_) => _clearError(),
         ),
         const SizedBox(height: 14),
-        _buildTextField(
+        _AuthField(
           controller: _passwordController,
           hint: 'Password (min 8 chars)',
           obscure: !_showPassword,
           action: TextInputAction.next,
+          textColor: textColor,
+          subColor: subColor,
+          borderColor: borderColor,
+          onChanged: (_) => _clearError(),
           suffix: GestureDetector(
             onTap: () => setState(() => _showPassword = !_showPassword),
             child: Padding(
@@ -231,11 +256,15 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        _buildTextField(
+        _AuthField(
           controller: _confirmController,
           hint: 'Confirm password',
           obscure: !_showConfirm,
           action: TextInputAction.done,
+          textColor: textColor,
+          subColor: subColor,
+          borderColor: borderColor,
+          onChanged: (_) => _clearError(),
           onSubmitted: (_) => _goStep2(),
           suffix: GestureDetector(
             onTap: () => setState(() => _showConfirm = !_showConfirm),
@@ -247,27 +276,29 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _buildPrimaryButton('Next', _goStep2),
+        _PrimaryButton(label: 'Next', isDark: isDark, onTap: _goStep2),
       ],
     );
   }
 
-  Widget _buildStep2() {
+  Widget _buildStep2(bool isDark, Color textColor, Color subColor) {
+    final chipBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final chipBorder =
+        isDark ? const Color(0xFF444444) : const Color(0xFFDDDDDD);
+    final selectedBg = isDark ? Colors.white : Colors.black;
+    final selectedText = isDark ? Colors.black : Colors.white;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your interests',
-          style: TextStyle(
-              fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black),
-        ),
+        Text('Your interests',
+            style: TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w800, color: textColor)),
         const SizedBox(height: 8),
-        const Text(
-          'Select topics you care about',
-          style: TextStyle(fontSize: 15, color: Colors.grey),
-        ),
+        Text('Select topics you care about',
+            style: TextStyle(fontSize: 15, color: subColor)),
         const SizedBox(height: 32),
-        if (_error != null) _buildError(),
+        if (_error != null) _ErrorBox(_error!),
         Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -276,6 +307,7 @@ class _SignupScreenState extends State<SignupScreen> {
             return GestureDetector(
               onTap: () {
                 setState(() {
+                  _error = null;
                   if (selected) {
                     _selectedInterests.remove(interest);
                   } else {
@@ -287,16 +319,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: selected ? Colors.black : Colors.white,
+                  color: selected ? selectedBg : chipBg,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: selected ? Colors.black : const Color(0xFFDDDDDD),
-                  ),
+                      color: selected ? selectedBg : chipBorder),
                 ),
                 child: Text(
                   interest,
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.black,
+                    color: selected ? selectedText : textColor,
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
                   ),
@@ -306,38 +337,37 @@ class _SignupScreenState extends State<SignupScreen> {
           }).toList(),
         ),
         const SizedBox(height: 32),
-        _buildPrimaryButton('Next', _goStep3),
+        _PrimaryButton(label: 'Next', isDark: isDark, onTap: _goStep3),
       ],
     );
   }
 
-  Widget _buildStep3() {
+  Widget _buildStep3(
+      bool isDark, Color textColor, Color subColor, Color borderColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your region',
-          style: TextStyle(
-              fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black),
-        ),
+        Text('Your region',
+            style: TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w800, color: textColor)),
         const SizedBox(height: 8),
-        const Text(
-          'Select your location for regional news',
-          style: TextStyle(fontSize: 15, color: Colors.grey),
-        ),
+        Text('Select your location for regional news',
+            style: TextStyle(fontSize: 15, color: subColor)),
         const SizedBox(height: 32),
-        if (_error != null) _buildError(),
+        if (_error != null) _ErrorBox(_error!),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFEEEEEE)),
+            border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(10),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedRegion,
               isExpanded: true,
+              dropdownColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              style: TextStyle(color: textColor, fontSize: 15),
               onChanged: (val) {
                 if (val != null) setState(() => _selectedRegion = val);
               },
@@ -354,8 +384,8 @@ class _SignupScreenState extends State<SignupScreen> {
           child: ElevatedButton(
             onPressed: _loading ? null : _handleSignup,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
+              backgroundColor: isDark ? Colors.white : Colors.black,
+              foregroundColor: isDark ? Colors.black : Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
               disabledBackgroundColor: Colors.grey[600],
@@ -375,8 +405,14 @@ class _SignupScreenState extends State<SignupScreen> {
       ],
     );
   }
+}
 
-  Widget _buildError() {
+class _ErrorBox extends StatelessWidget {
+  final String message;
+  const _ErrorBox(this.message);
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
@@ -386,38 +422,62 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.red.shade200),
       ),
-      child: Text(_error!,
+      child: Text(message,
           style: const TextStyle(color: Colors.red, fontSize: 14)),
     );
   }
+}
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType keyboardType = TextInputType.text,
-    TextInputAction action = TextInputAction.next,
-    bool obscure = false,
-    Widget? suffix,
-    ValueChanged<String>? onSubmitted,
-  }) {
+class _AuthField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType keyboardType;
+  final TextInputAction action;
+  final bool obscure;
+  final Widget? suffix;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final Color textColor;
+  final Color subColor;
+  final Color borderColor;
+
+  const _AuthField({
+    required this.controller,
+    required this.hint,
+    this.keyboardType = TextInputType.text,
+    this.action = TextInputAction.next,
+    this.obscure = false,
+    this.suffix,
+    this.onChanged,
+    this.onSubmitted,
+    required this.textColor,
+    required this.subColor,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: borderColor),
+    );
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       textInputAction: action,
       obscureText: obscure,
       autocorrect: false,
+      onChanged: onChanged,
       onSubmitted: onSubmitted,
-      style: const TextStyle(color: Colors.black),
+      style: TextStyle(color: textColor),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFAAAAAA)),
-        border: OutlineInputBorder(
+        hintStyle: TextStyle(color: subColor),
+        border: border,
+        enabledBorder: border,
+        focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+          borderSide: BorderSide(color: textColor.withOpacity(0.4)),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -425,16 +485,26 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+}
 
-  Widget _buildPrimaryButton(String label, VoidCallback onTap) {
+class _PrimaryButton extends StatelessWidget {
+  final String label;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _PrimaryButton(
+      {required this.label, required this.isDark, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
+          backgroundColor: isDark ? Colors.white : Colors.black,
+          foregroundColor: isDark ? Colors.black : Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),

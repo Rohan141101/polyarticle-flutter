@@ -7,6 +7,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/article.dart';
+import '../providers/auth_provider.dart';
+import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/api.dart' as api;
 import '../services/event_logger.dart';
@@ -35,11 +37,15 @@ const _interstitialCooldownSecs = 90;
 class FeedScreen extends StatefulWidget {
   final VoidCallback onProfilePress;
   final void Function(Article article) onOpenArticle;
+  final VoidCallback? onLogin;
+  final VoidCallback? onSignup;
 
   const FeedScreen({
     super.key,
     required this.onProfilePress,
     required this.onOpenArticle,
+    this.onLogin,
+    this.onSignup,
   });
 
   @override
@@ -68,10 +74,21 @@ class _FeedScreenState extends State<FeedScreen> {
   DateTime? _dwellStart;
   String? _currentArticleId;
 
+  bool get _isGuest {
+    final auth = context.read<AuthProvider>();
+    final guest = context.read<GuestProvider>();
+    return Platform.isIOS && guest.isGuest && !auth.isAuthenticated;
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadInitialArticles();
+    // Don't fetch articles for unauthenticated guests — no token available
+    if (!_isGuest) {
+      _loadInitialArticles();
+    } else {
+      _loading = false;
+    }
     _loadBannerAd();
     _loadInterstitialAd();
   }
@@ -289,6 +306,63 @@ class _FeedScreenState extends State<FeedScreen> {
     _maybeShowInterstitial();
   }
 
+  Widget _buildGuestPrompt(Color textColor, Color subColor, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline,
+                size: 56, color: isDark ? Colors.white54 : Colors.black26),
+            const SizedBox(height: 20),
+            Text(
+              'Create a free account',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: textColor),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sign up to access your personalised news feed.',
+              style: TextStyle(fontSize: 14, color: subColor),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: widget.onSignup,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? Colors.white : Colors.black,
+                  foregroundColor: isDark ? Colors.black : Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Sign Up',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: widget.onLogin,
+              child: Text(
+                'Already have an account? Log In',
+                style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
@@ -379,11 +453,15 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 3),
 
                 // SWIPE AREA
                 Expanded(
-                  child: _loading
+                  child: context.watch<GuestProvider>().isGuest &&
+                          !context.watch<AuthProvider>().isAuthenticated &&
+                          Platform.isIOS
+                      ? _buildGuestPrompt(text, subColor, isDark)
+                      : _loading
                       ? Center(
                           child: CircularProgressIndicator(color: text))
                       : _error != null
@@ -435,31 +513,31 @@ class _FeedScreenState extends State<FeedScreen> {
                                           ),
                                         )
                                       : Align(
-                                          alignment: const Alignment(0, -0.6),
+                                          alignment: const Alignment(0, -0.50),
                                           child: Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 18),
-                                            child: SizedBox(
-                                              height: MediaQuery.of(context)
-                                                      .size
-                                                      .height *
-                                                  0.68,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                                            child: ConstrainedBox(
+                                              // Cap width on tablets; phones use full width.
+                                              constraints: const BoxConstraints(maxWidth: 420),
                                               child: SwipeDeck(
-                                                data: _items,
-                                                currentIndex: _currentIndex,
-                                                onIndexChange: _onIndexChange,
-                                                onLike: (s) =>
-                                                    _onSwipe('swipe_right', s),
-                                                onDislike: (s) =>
-                                                    _onSwipe('swipe_left', s),
-                                                onSave: () =>
-                                                    _onSwipe('save', 1.0),
-                                                onOpenDetail:
-                                                    widget.onOpenArticle,
-                                                onSwipeDown: _onSwipeDown,
+                                                    data: _items,
+                                                    currentIndex: _currentIndex,
+                                                    onIndexChange: _onIndexChange,
+                                                    onLike: (s) =>
+                                                        _onSwipe('swipe_right', s),
+                                                    onDislike: (s) =>
+                                                        _onSwipe('swipe_left', s),
+                                                    onSave: () =>
+                                                        _onSwipe('save', 1.0),
+                                                    onOpenDetail: (article) {
+                                                      eventLogger.log('open_detail', article.id);
+                                                      widget.onOpenArticle(article);
+                                                    },
+                                                    onSwipeDown: _onSwipeDown,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
                                           ),
-                                        ),
                 ),
               ],
             ),

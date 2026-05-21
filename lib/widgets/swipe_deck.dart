@@ -60,36 +60,48 @@ class _SwipeDeckState extends State<SwipeDeck> {
     final safeBack1 = idx + 1 < data.length ? idx + 1 : null;
     final safeBack2 = idx + 2 < data.length ? idx + 2 : null;
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        if (safeBack2 != null)
-          _buildBackCard(data[safeBack2], scale: 0.90, yOffset: -6),
-        if (safeBack1 != null)
-          _buildBackCard(data[safeBack1], scale: 0.95, yOffset: -3),
-        SwipeCard(
-          key: ValueKey('card_$idx'),
-          item: data[idx],
-          disabled: false,
-          onSwipeDown: widget.onSwipeDown,
-          onLike: (strength) {
-            widget.onLike?.call(strength);
-            _handleNext();
-          },
-          onDislike: (strength) {
-            widget.onDislike?.call(strength);
-            _handleNext();
-          },
-          onSave: () {
-            widget.onSave?.call();
-            _handleNext();
-          },
-          onOpenDetail: () {
-            widget.onOpenDetail?.call(data[idx]);
-          },
+    return LayoutBuilder(builder: (context, constraints) {
+      final cardWidth = constraints.maxWidth;
+      // Fixed aspect ratio (w:h ≈ 1:1.55). Also cap by available height so
+      // the card never overflows on short phones (e.g. iPhone SE).
+      final maxH = constraints.maxHeight.isFinite ? constraints.maxHeight : 680.0;
+      final cardHeight = (cardWidth * 1.55).clamp(300.0, maxH.clamp(300.0, 680.0));
+
+      return SizedBox(
+        width: cardWidth,
+        height: cardHeight,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (safeBack2 != null)
+              _buildBackCard(data[safeBack2], scale: 0.90, yOffset: 14),
+            if (safeBack1 != null)
+              _buildBackCard(data[safeBack1], scale: 0.95, yOffset: 7),
+            SwipeCard(
+              key: ValueKey('card_$idx'),
+              item: data[idx],
+              disabled: false,
+              onSwipeDown: widget.onSwipeDown,
+              onLike: (strength) {
+                widget.onLike?.call(strength);
+                _handleNext();
+              },
+              onDislike: (strength) {
+                widget.onDislike?.call(strength);
+                _handleNext();
+              },
+              onSave: () {
+                widget.onSave?.call();
+                _handleNext();
+              },
+              onOpenDetail: () {
+                widget.onOpenDetail?.call(data[idx]);
+              },
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    });
   }
 
   Widget _buildBackCard(Article item, {required double scale, double yOffset = 0}) {

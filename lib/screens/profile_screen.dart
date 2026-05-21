@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
+import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/api.dart' as api;
 
@@ -24,11 +26,15 @@ const _locations = [
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onActiveSessions;
+  final VoidCallback? onLogin;
+  final VoidCallback? onSignup;
 
   const ProfileScreen({
     super.key,
     required this.onBack,
     required this.onActiveSessions,
+    this.onLogin,
+    this.onSignup,
   });
 
   @override
@@ -87,9 +93,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final guest = context.watch<GuestProvider>();
     final settings = context.watch<SettingsProvider>();
     final isDark = settings.darkMode;
     final user = auth.user;
+    final isGuest = Platform.isIOS && guest.isGuest && !auth.isAuthenticated;
 
     final bg = isDark ? const Color(0xFF121212) : const Color(0xFFF8F8F8);
     final textColor = isDark ? Colors.white : Colors.black;
@@ -128,70 +136,150 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Account section
-              _sectionLabel('Account', subColor),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _infoRow(Icons.email_outlined, user?.email ?? '—',
-                        textColor, divColor),
-                    _divider(divColor),
-                    _infoRow(Icons.phone_outlined, 'Phone number',
-                        subColor, divColor),
-                    _divider(divColor),
-                    _infoRow(Icons.bookmark_outline, 'Saved articles',
-                        subColor, divColor),
-                    _divider(divColor),
-                    _buttonRow(
-                      icon: Icons.lock_outline,
-                      label: 'Change password',
-                      textColor: textColor,
-                      divColor: divColor,
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Coming Soon'),
-                            content: const Text(
-                                'Password change coming soon!'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(),
-                                child: const Text('OK'),
+              // Guest banner
+              if (isGuest) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Browsing as Guest',
+                            style: TextStyle(
+                                color: textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text('Create an account to save your preferences.',
+                            style:
+                                TextStyle(color: subColor, fontSize: 13)),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: widget.onSignup,
+                                child: Container(
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                    borderRadius:
+                                        BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text('Sign Up',
+                                      style: TextStyle(
+                                          color: isDark
+                                              ? Colors.black
+                                              : Colors.white,
+                                          fontWeight: FontWeight.w600)),
+                                ),
                               ),
-                            ],
-                          ),
-                        );
-                      },
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: widget.onLogin,
+                                child: Container(
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black),
+                                    borderRadius:
+                                        BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text('Log In',
+                                      style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w600)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    _divider(divColor),
-                    _buttonRow(
-                      icon: Icons.devices,
-                      label: 'Active Sessions',
-                      textColor: textColor,
-                      divColor: divColor,
-                      onTap: widget.onActiveSessions,
-                    ),
-                    _divider(divColor),
-                    _buttonRow(
-                      icon: Icons.delete_outline,
-                      label: 'Delete Account',
-                      textColor: Colors.red,
-                      divColor: divColor,
-                      onTap: _handleDeleteAccount,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 24),
+              ],
 
-              const SizedBox(height: 24),
+              // Account section (only for logged-in users)
+              if (!isGuest) ...[
+                _sectionLabel('Account', subColor),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      _infoRow(Icons.email_outlined, user?.email ?? '—',
+                          textColor, divColor),
+                      _divider(divColor),
+                      _infoRow(Icons.phone_outlined, 'Phone number',
+                          subColor, divColor),
+                      _divider(divColor),
+                      _infoRow(Icons.bookmark_outline, 'Saved articles',
+                          subColor, divColor),
+                      _divider(divColor),
+                      _buttonRow(
+                        icon: Icons.lock_outline,
+                        label: 'Change password',
+                        textColor: textColor,
+                        divColor: divColor,
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Coming Soon'),
+                              content: const Text(
+                                  'Password change coming soon!'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      _divider(divColor),
+                      _buttonRow(
+                        icon: Icons.devices,
+                        label: 'Active Sessions',
+                        textColor: textColor,
+                        divColor: divColor,
+                        onTap: widget.onActiveSessions,
+                      ),
+                      _divider(divColor),
+                      _buttonRow(
+                        icon: Icons.delete_outline,
+                        label: 'Delete Account',
+                        textColor: Colors.red,
+                        divColor: divColor,
+                        onTap: _handleDeleteAccount,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
 
-              // Preferences section
+              // Preferences section (always shown)
               _sectionLabel('Preferences', subColor),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),

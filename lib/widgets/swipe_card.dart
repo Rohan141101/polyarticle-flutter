@@ -207,61 +207,64 @@ class _SwipeCardState extends State<SwipeCard>
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final isDark = settings.darkMode;
-    final width = MediaQuery.of(context).size.width;
 
-    final likeOp = _likeOpacity(width);
-    final nopeOp = _nopeOpacity(width);
+    return LayoutBuilder(builder: (context, constraints) {
+      // Use the actual card width, not the full screen width.
+      // SwipeDeck constrains us to a fixed SizedBox so this is always accurate.
+      final width = constraints.maxWidth;
+      final likeOp = _likeOpacity(width);
+      final nopeOp = _nopeOpacity(width);
 
-    return GestureDetector(
-      onPanUpdate: widget.disabled ? null : _onPanUpdate,
-      onPanEnd: widget.disabled ? null : (d) => _onPanEnd(d, width),
-      child: Transform.translate(
-        offset: _drag,
-        child: Transform.rotate(
-          angle: _rotation(width),
-          child: Stack(
-            children: [
-              _cardBody(isDark),
-              if (likeOp > 0)
-                Positioned(
-                  top: 60,
-                  right: 30,
-                  child: Opacity(
-                    opacity: likeOp,
-                    child: const Text(
-                      'LIKE',
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF22C55E)),
+      return GestureDetector(
+        onPanUpdate: widget.disabled ? null : _onPanUpdate,
+        onPanEnd: widget.disabled ? null : (d) => _onPanEnd(d, width),
+        child: Transform.translate(
+          offset: _drag,
+          child: Transform.rotate(
+            angle: _rotation(width),
+            child: Stack(
+              children: [
+                _cardBody(isDark),
+                if (likeOp > 0)
+                  Positioned(
+                    top: 60,
+                    right: 30,
+                    child: Opacity(
+                      opacity: likeOp,
+                      child: const Text(
+                        'LIKE',
+                        style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF22C55E)),
+                      ),
                     ),
                   ),
-                ),
-              if (nopeOp > 0)
-                Positioned(
-                  top: 60,
-                  left: 30,
-                  child: Opacity(
-                    opacity: nopeOp,
-                    child: const Text(
-                      'NOPE',
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFFEF4444)),
+                if (nopeOp > 0)
+                  Positioned(
+                    top: 60,
+                    left: 30,
+                    child: Opacity(
+                      opacity: nopeOp,
+                      child: const Text(
+                        'NOPE',
+                        style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFEF4444)),
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _cardBody(bool isDark) {
     return Container(
-      height: double.infinity,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         borderRadius: BorderRadius.circular(28),
@@ -279,7 +282,9 @@ class _SwipeCardState extends State<SwipeCard>
   }
 
   Widget _adBody() {
-    if (_adLoaded && _nativeAd != null) return AdWidget(ad: _nativeAd!);
+    if (_adLoaded && _nativeAd != null) {
+      return SizedBox.expand(child: AdWidget(ad: _nativeAd!));
+    }
     return Container(
       color: const Color(0xFFF3F4F6),
       child: Center(
@@ -304,6 +309,15 @@ class _SwipeCardState extends State<SwipeCard>
         isDark ? const Color(0xFFAAAAAA) : const Color(0xFF777777);
     final circleBg = isDark ? const Color(0xFF2C2C2E) : Colors.white;
     final circleIconColor = isDark ? Colors.white : Colors.black;
+
+    // Scale fonts by the shorter screen dimension so text stays proportional
+    // on both narrow phones and wide tablets without going too small or large.
+    final mq = MediaQuery.of(context).size;
+    final scale = ((mq.shortestSide) / 390).clamp(0.88, 1.15);
+    final titleSize = 20.0 * scale;
+    final summarySize = 13.5 * scale;
+    final metaSize = 11.5 * scale;
+    final catSize = 11.5 * scale;
 
     return Column(
       children: [
@@ -365,7 +379,7 @@ class _SwipeCardState extends State<SwipeCard>
                   Text(
                     widget.item.category!.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: catSize,
                       fontWeight: FontWeight.w700,
                       color: catColor,
                     ),
@@ -374,7 +388,7 @@ class _SwipeCardState extends State<SwipeCard>
                 Text(
                   widget.item.title,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: titleSize,
                     fontWeight: FontWeight.w700,
                     color: textColor,
                     height: 1.2,
@@ -386,14 +400,14 @@ class _SwipeCardState extends State<SwipeCard>
                 if (widget.item.source.isNotEmpty)
                   Text(
                     widget.item.source,
-                    style: TextStyle(fontSize: 11, color: metaColor),
+                    style: TextStyle(fontSize: metaSize, color: metaColor),
                   ),
                 const SizedBox(height: 4),
                 Expanded(
                   child: Text(
                     widget.item.summary,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: summarySize,
                       color: summaryColor,
                       height: 1.35,
                     ),
