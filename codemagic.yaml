@@ -13,7 +13,7 @@ workflows:
         bundle_identifier: com.rohan.flashfeed2
     scripts:
       - name: Create .env file
-        script: touch .env
+        script: echo "EXPO_PUBLIC_ADMOB_BANNER_ID=" > .env
       - name: Get Flutter packages
         script: flutter pub get
       - name: Install pods
