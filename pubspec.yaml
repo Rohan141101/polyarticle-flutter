@@ -37,6 +37,9 @@ dependencies:
   # Google Mobile Ads (replaces react-native-google-mobile-ads)
   google_mobile_ads: ^5.2.0
 
+  # Force CocoaPods-compatible version (3.14+ dropped CocoaPods for SPM-only)
+  webview_flutter_wkwebview: ">=3.0.0 <3.14.0"
+
   # Image caching
   cached_network_image: ^3.4.1
 
