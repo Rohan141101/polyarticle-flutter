@@ -13,15 +13,7 @@ workflows:
         bundle_identifier: com.rohan.flashfeed2
     scripts:
       - name: Create .env file
-        script: |
-          cat > .env << 'EOF'
-          EXPO_PUBLIC_ADMOB_BANNER_ID=${ADMOB_ANDROID_BANNER_ID}
-          EXPO_PUBLIC_ADMOB_IOS_BANNER_ID=${ADMOB_IOS_BANNER_ID}
-          EXPO_PUBLIC_ADMOB_INTERSTITIAL_ID=${ADMOB_ANDROID_INTERSTITIAL_ID}
-          EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID=${ADMOB_IOS_INTERSTITIAL_ID}
-          EXPO_PUBLIC_ADMOB_NATIVE_ID=${ADMOB_ANDROID_NATIVE_ID}
-          EXPO_PUBLIC_ADMOB_IOS_NATIVE_ID=${ADMOB_IOS_NATIVE_ID}
-          EOF
+        script: touch .env
       - name: Get Flutter packages
         script: flutter pub get
       - name: Install pods
