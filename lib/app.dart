@@ -99,14 +99,9 @@ class _RootState extends State<_Root> {
     // Authenticated user → full app
     if (auth.isAuthenticated) return _buildAuthFlow();
 
-    // iOS guest with setup done → feed as guest
-    if (Platform.isIOS && guest.isGuest && guest.setupDone) {
+    // iOS guest → go straight to feed (shows articles or signup prompt)
+    if (Platform.isIOS && guest.isGuest) {
       return _buildAuthFlow();
-    }
-
-    // iOS guest mid-onboarding
-    if (Platform.isIOS && guest.isGuest && !guest.setupDone) {
-      return _buildGuestOnboarding();
     }
 
     // Unauth flow

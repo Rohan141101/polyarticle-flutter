@@ -63,6 +63,7 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _refreshing = false;
   String? _error;
 
+  bool _guestBlocked = false;
   int _swipeCount = 0;
   DateTime? _lastInterstitialTime;
   bool _interstitialLoaded = false;
@@ -83,12 +84,7 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
-    // Don't fetch articles for unauthenticated guests — no token available
-    if (!_isGuest) {
-      _loadInitialArticles();
-    } else {
-      _loading = false;
-    }
+    _loadInitialArticles();
     _loadBannerAd();
     _loadInterstitialAd();
   }
@@ -191,6 +187,7 @@ class _FeedScreenState extends State<FeedScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _guestBlocked = false;
       _items = [];
       _currentIndex = 0;
       _page = 1;
@@ -215,7 +212,12 @@ class _FeedScreenState extends State<FeedScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        final msg = e.toString().replaceFirst('Exception: ', '');
+        if ((msg == 'NO_TOKEN' || msg == 'UNAUTHORIZED') && _isGuest) {
+          setState(() => _guestBlocked = true);
+        } else {
+          setState(() => _error = msg);
+        }
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -457,9 +459,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 // SWIPE AREA
                 Expanded(
-                  child: context.watch<GuestProvider>().isGuest &&
-                          !context.watch<AuthProvider>().isAuthenticated &&
-                          Platform.isIOS
+                  child: _guestBlocked
                       ? _buildGuestPrompt(text, subColor, isDark)
                       : _loading
                       ? Center(

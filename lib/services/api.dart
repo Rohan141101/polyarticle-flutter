@@ -189,17 +189,16 @@ Future<List<Article>> fetchNews(
   bool fresh = false,
 }) async {
   final token = await getSession();
-  if (token == null || token.isEmpty) throw Exception('NO_TOKEN');
 
   final selectedCategory = category ?? 'For You';
   final url = Uri.parse(
     '$apiUrl/news?category=${Uri.encodeComponent(selectedCategory)}&page=$page&limit=$limit&fresh=$fresh',
   );
 
-  final res = await _fetchWithTimeout(
-    url,
-    {'Authorization': 'Bearer $token'},
-  );
+  final headers = <String, String>{};
+  if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+
+  final res = await _fetchWithTimeout(url, headers);
   final data = _handleJson(res) as Map<String, dynamic>;
   final articles = data['data'] as List? ?? [];
 
@@ -224,11 +223,13 @@ Future<List<Article>> fetchNews(
 
 Future<List<Article>> fetchRegionalNews({int limit = 10}) async {
   final token = await getSession();
-  if (token == null || token.isEmpty) throw Exception('NO_TOKEN');
+
+  final headers = <String, String>{};
+  if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
 
   final res = await _fetchWithTimeout(
     Uri.parse('$apiUrl/news/regional?limit=$limit'),
-    {'Authorization': 'Bearer $token'},
+    headers,
   );
   final data = _handleJson(res) as Map<String, dynamic>;
   final articles = data['data'] as List? ?? [];
