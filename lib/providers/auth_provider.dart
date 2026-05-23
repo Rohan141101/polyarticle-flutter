@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/api.dart' as api;
@@ -26,10 +27,15 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
     try {
-      final userData = await api.getMe(token: token);
+      final userData = await api.getMe(token: token)
+          .timeout(const Duration(seconds: 10));
       _sessionToken = token;
       _user = userData;
       eventLogger.setToken(token);
+    } on TimeoutException {
+      // Server sleeping — keep token, show unauthenticated so app loads fast
+      _sessionToken = null;
+      _user = null;
     } catch (e) {
       await clearSession();
       _sessionToken = null;

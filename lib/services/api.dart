@@ -198,7 +198,8 @@ Future<List<Article>> fetchNews(
   final headers = <String, String>{};
   if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
 
-  final res = await _fetchWithTimeout(url, headers);
+  final res = await _fetchWithTimeout(url, headers,
+      timeout: const Duration(seconds: 20));
   final data = _handleJson(res) as Map<String, dynamic>;
   final articles = data['data'] as List? ?? [];
 
@@ -209,7 +210,7 @@ Future<List<Article>> fetchNews(
       imageUrl = imageUrl.replaceAll('&amp;', '&');
     }
     return Article(
-      id: map['id'] as String,
+      id: map['id'].toString(),
       title: map['title'] as String,
       summary: map['summary'] as String,
       image: imageUrl,
@@ -230,6 +231,7 @@ Future<List<Article>> fetchRegionalNews({int limit = 10}) async {
   final res = await _fetchWithTimeout(
     Uri.parse('$apiUrl/news/regional?limit=$limit'),
     headers,
+    timeout: const Duration(seconds: 20),
   );
   final data = _handleJson(res) as Map<String, dynamic>;
   final articles = data['data'] as List? ?? [];
@@ -241,7 +243,7 @@ Future<List<Article>> fetchRegionalNews({int limit = 10}) async {
       imageUrl = imageUrl.replaceAll('&amp;', '&');
     }
     return Article(
-      id: map['id'] as String,
+      id: map['id'].toString(),
       title: map['title'] as String,
       summary: map['summary'] as String,
       image: imageUrl,
