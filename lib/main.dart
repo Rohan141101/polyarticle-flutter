@@ -9,7 +9,9 @@ Future<void> main() async {
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  await dotenv.load(fileName: 'assets/.env');
+  try {
+    await dotenv.load(fileName: 'assets/.env').timeout(const Duration(seconds: 2));
+  } catch (_) {}
 
   runApp(const PolyArticleApp());
 
