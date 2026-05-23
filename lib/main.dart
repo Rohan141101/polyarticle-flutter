@@ -11,7 +11,7 @@ Future<void> main() async {
 
   await dotenv.load(fileName: 'assets/.env');
 
-  await MobileAds.instance.initialize();
-
   runApp(const PolyArticleApp());
+
+  MobileAds.instance.initialize();
 }
