@@ -4,16 +4,19 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../services/api.dart' as api;
 import '../providers/auth_provider.dart';
+import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onSignup;
   final VoidCallback onForgot;
+  final VoidCallback? onBack;
 
   const LoginScreen({
     super.key,
     required this.onSignup,
     required this.onForgot,
+    this.onBack,
   });
 
   @override
@@ -86,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
           result['sessionToken'] as String? ?? result['token'] as String? ?? '';
       if (token.isNotEmpty && mounted) {
         await context.read<AuthProvider>().loginSuccess(token);
+        await context.read<GuestProvider>().clearGuest();
       }
     } catch (e) {
       if (mounted) {
@@ -116,6 +120,13 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (widget.onBack != null)
+                  GestureDetector(
+                    onTap: widget.onBack,
+                    child: Text('← Back',
+                        style: TextStyle(color: subColor, fontSize: 14)),
+                  ),
+                if (widget.onBack != null) const SizedBox(height: 24),
                 Text(
                   'Welcome back',
                   style: TextStyle(

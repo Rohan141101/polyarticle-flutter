@@ -18,7 +18,7 @@ import 'screens/article_screen.dart';
 
 enum _UnauthScreen { welcome, login, signup, forgot }
 enum _GuestScreen { interests, region }
-enum _AuthScreen { feed, profile, sessions, article }
+enum _AuthScreen { feed, profile, sessions, article, guestLogin, guestSignup, guestForgot }
 
 class PolyArticleApp extends StatelessWidget {
   const PolyArticleApp({super.key});
@@ -97,7 +97,15 @@ class _RootState extends State<_Root> {
     }
 
     // Authenticated user → full app
-    if (auth.isAuthenticated) return _buildAuthFlow();
+    if (auth.isAuthenticated) {
+      // Reset guest login/signup screens once auth succeeds
+      if (_authScreen == _AuthScreen.guestLogin ||
+          _authScreen == _AuthScreen.guestSignup ||
+          _authScreen == _AuthScreen.guestForgot) {
+        _authScreen = _AuthScreen.feed;
+      }
+      return _buildAuthFlow();
+    }
 
     // iOS guest with setup done → feed
     if (Platform.isIOS && guest.isGuest && guest.setupDone) {
@@ -194,20 +202,24 @@ class _RootState extends State<_Root> {
           onBack: () => setState(() => _authScreen = _AuthScreen.feed),
           onActiveSessions: () =>
               setState(() => _authScreen = _AuthScreen.sessions),
-          onLogin: () {
-            context.read<GuestProvider>().clearGuest();
-            setState(() {
-              _authScreen = _AuthScreen.feed;
-              _unauthScreen = _UnauthScreen.login;
-            });
-          },
-          onSignup: () {
-            context.read<GuestProvider>().clearGuest();
-            setState(() {
-              _authScreen = _AuthScreen.feed;
-              _unauthScreen = _UnauthScreen.signup;
-            });
-          },
+          onLogin: () =>
+              setState(() => _authScreen = _AuthScreen.guestLogin),
+          onSignup: () =>
+              setState(() => _authScreen = _AuthScreen.guestSignup),
+        );
+      case _AuthScreen.guestLogin:
+        return LoginScreen(
+          onBack: () => setState(() => _authScreen = _AuthScreen.profile),
+          onSignup: () => setState(() => _authScreen = _AuthScreen.guestSignup),
+          onForgot: () => setState(() => _authScreen = _AuthScreen.guestForgot),
+        );
+      case _AuthScreen.guestSignup:
+        return SignupScreen(
+          onBack: () => setState(() => _authScreen = _AuthScreen.profile),
+        );
+      case _AuthScreen.guestForgot:
+        return ForgotPasswordScreen(
+          onBack: () => setState(() => _authScreen = _AuthScreen.guestLogin),
         );
       case _AuthScreen.sessions:
         return ActiveSessionsScreen(

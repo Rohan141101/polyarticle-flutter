@@ -310,9 +310,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
+              // Location section (authenticated users only)
+              if (!isGuest) ...[
               const SizedBox(height: 24),
 
-              // Location section
               _sectionLabel('Location', subColor),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -358,6 +359,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
+
+              ], // end location section
 
               const SizedBox(height: 24),
 
@@ -415,6 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
+              if (!isGuest) ...[
               const SizedBox(height: 32),
 
               // Logout button
@@ -439,6 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
+              ], // end logout section
 
               const SizedBox(height: 40),
             ],
