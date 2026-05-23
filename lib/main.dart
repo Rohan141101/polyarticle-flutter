@@ -27,7 +27,9 @@ Future<void> main() async {
 
   try {
     await dotenv.load(fileName: 'assets/.env').timeout(const Duration(seconds: 2));
-  } catch (_) {}
+  } catch (_) {
+    dotenv.testLoad(fileInput: '');
+  }
 
   runApp(const PolyArticleApp());
 
