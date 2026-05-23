@@ -3,7 +3,9 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import '../services/api.dart' as api;
+import '../services/session_storage.dart';
 import '../providers/auth_provider.dart';
+import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
 
 const _interests = [
@@ -146,6 +148,9 @@ class _SignupScreenState extends State<SignupScreen> {
         return i.replaceAll(RegExp(r'[^\w\s]'), '').trim();
       }).toList();
 
+      // Pass guest token so backend can merge interaction history
+      final guestToken = await getSession();
+
       final result = await api.signup(
         email: _emailController.text.trim().toLowerCase(),
         password: _passwordController.text,
@@ -153,6 +158,7 @@ class _SignupScreenState extends State<SignupScreen> {
         interests: interests,
         deviceName: deviceName,
         deviceOS: deviceOS,
+        guestToken: guestToken,
       );
 
       final token =
@@ -160,6 +166,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (token.isNotEmpty && mounted) {
         await context.read<AuthProvider>().loginSuccess(token);
+        await context.read<GuestProvider>().clearGuest();
       }
     } catch (e) {
       if (mounted) {

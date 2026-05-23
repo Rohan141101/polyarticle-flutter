@@ -60,6 +60,7 @@ Future<Map<String, dynamic>> signup({
   List<String>? interests,
   String? deviceName,
   String? deviceOS,
+  String? guestToken,
 }) async {
   final res = await _fetchWithTimeout(
     Uri.parse('$apiUrl/auth/signup'),
@@ -72,10 +73,31 @@ Future<Map<String, dynamic>> signup({
       if (interests != null) 'interests': interests,
       if (deviceName != null) 'deviceName': deviceName,
       if (deviceOS != null) 'deviceOS': deviceOS,
+      if (guestToken != null) 'guestToken': guestToken,
     }),
     timeout: const Duration(seconds: 30),
   );
   return _handleJson(res) as Map<String, dynamic>;
+}
+
+Future<String> createGuestSession({
+  List<String>? interests,
+  String? region,
+}) async {
+  final res = await _fetchWithTimeout(
+    Uri.parse('$apiUrl/auth/guest'),
+    {'Content-Type': 'application/json'},
+    method: 'POST',
+    body: json.encode({
+      if (interests != null && interests.isNotEmpty) 'interests': interests,
+      if (region != null) 'region': region,
+      'deviceOS': 'ios',
+      'platform': 'ios',
+    }),
+    timeout: const Duration(seconds: 30),
+  );
+  final data = _handleJson(res) as Map<String, dynamic>;
+  return data['sessionToken'] as String;
 }
 
 Future<Map<String, dynamic>> login({

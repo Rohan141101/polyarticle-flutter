@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/api.dart' as api;
+import '../services/session_storage.dart';
 
 const _regions = [
   'USA', 'UK', 'Australia', 'Canada', 'India',
@@ -31,6 +33,13 @@ class _GuestRegionScreenState extends State<GuestRegionScreen> {
     final guest = context.read<GuestProvider>();
     await guest.saveRegion(_selected);
     await guest.completeSetup();
+    try {
+      final token = await api.createGuestSession(
+        interests: guest.cleanInterests,
+        region: _selected,
+      );
+      await saveSession(token);
+    } catch (_) {}
     widget.onDone();
   }
 

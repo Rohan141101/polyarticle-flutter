@@ -14,6 +14,10 @@ class GuestProvider extends ChangeNotifier {
   String get region => _region;
   bool get loaded => _loaded;
 
+  // Emoji-free interest names for API calls ("Technology 💻" → "Technology")
+  List<String> get cleanInterests =>
+      _interests.map((i) => i.split(' ').first).toList();
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     _isGuest = prefs.getBool('guest_mode') ?? false;

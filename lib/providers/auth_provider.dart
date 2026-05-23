@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api.dart' as api;
 import '../services/session_storage.dart';
@@ -26,6 +27,16 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
+
+    // Guest tokens are not user sessions — skip getMe to avoid clearing them
+    final prefs = await SharedPreferences.getInstance();
+    final isGuest = prefs.getBool('guest_mode') ?? false;
+    if (isGuest) {
+      _loading = false;
+      notifyListeners();
+      return;
+    }
+
     try {
       final userData = await api.getMe(token: token)
           .timeout(const Duration(seconds: 10));
@@ -33,7 +44,6 @@ class AuthProvider extends ChangeNotifier {
       _user = userData;
       eventLogger.setToken(token);
     } on TimeoutException {
-      // Server sleeping — keep token, show unauthenticated so app loads fast
       _sessionToken = null;
       _user = null;
     } catch (e) {

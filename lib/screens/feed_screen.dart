@@ -12,6 +12,7 @@ import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/api.dart' as api;
 import '../services/event_logger.dart';
+import '../services/session_storage.dart';
 import '../widgets/swipe_deck.dart';
 
 const _categories = [
@@ -63,7 +64,6 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _refreshing = false;
   String? _error;
 
-  bool _guestBlocked = false;
   int _swipeCount = 0;
   DateTime? _lastInterstitialTime;
   bool _interstitialLoaded = false;
@@ -187,7 +187,6 @@ class _FeedScreenState extends State<FeedScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _guestBlocked = false;
       _items = [];
       _currentIndex = 0;
       _page = 1;
@@ -213,11 +212,20 @@ class _FeedScreenState extends State<FeedScreen> {
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceFirst('Exception: ', '');
-        if ((msg == 'NO_TOKEN' || msg == 'UNAUTHORIZED') && _isGuest) {
-          setState(() => _guestBlocked = true);
-        } else {
-          setState(() => _error = msg);
+        if (msg == 'UNAUTHORIZED' && _isGuest) {
+          // Guest token expired — regenerate silently and retry
+          try {
+            final guest = context.read<GuestProvider>();
+            final token = await api.createGuestSession(
+              interests: guest.cleanInterests,
+              region: guest.region,
+            );
+            await saveSession(token);
+            _loadInitialArticles(fresh: fresh);
+            return;
+          } catch (_) {}
         }
+        setState(() => _error = msg);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -459,9 +467,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 // SWIPE AREA
                 Expanded(
-                  child: _guestBlocked
-                      ? _buildGuestPrompt(text, subColor, isDark)
-                      : _loading
+                  child: _loading
                       ? Center(
                           child: CircularProgressIndicator(color: text))
                       : _error != null
