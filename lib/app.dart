@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'models/article.dart';
 import 'providers/auth_provider.dart';
 import 'providers/guest_provider.dart';
@@ -83,6 +85,16 @@ class _RootState extends State<_Root> {
   _GuestScreen _guestScreen = _GuestScreen.interests;
   _AuthScreen _authScreen = _AuthScreen.feed;
   Article? _selectedArticle;
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      } catch (_) {}
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

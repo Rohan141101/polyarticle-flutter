@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import '../providers/guest_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -18,9 +17,6 @@ class WelcomeScreen extends StatelessWidget {
 
   Future<void> _handleGuest(BuildContext context) async {
     await context.read<GuestProvider>().startGuest();
-    try {
-      await AppTrackingTransparency.requestTrackingAuthorization();
-    } catch (_) {}
     onContinueAsGuest();
   }
 

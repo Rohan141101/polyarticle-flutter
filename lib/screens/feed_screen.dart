@@ -64,6 +64,8 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _refreshing = false;
   String? _error;
 
+  final Set<String> _seenIds = {};
+
   int _swipeCount = 0;
   DateTime? _lastInterstitialTime;
   bool _interstitialLoaded = false;
@@ -190,6 +192,7 @@ class _FeedScreenState extends State<FeedScreen> {
       _items = [];
       _currentIndex = 0;
       _page = 1;
+      _seenIds.clear();
     });
 
     try {
@@ -206,8 +209,9 @@ class _FeedScreenState extends State<FeedScreen> {
         );
       }
 
+      final unique = articles.where((a) => _seenIds.add(a.id)).toList();
       if (mounted) {
-        setState(() => _items = _insertAds(articles));
+        setState(() => _items = _insertAds(unique));
       }
     } catch (e) {
       if (mounted) {
@@ -246,10 +250,11 @@ class _FeedScreenState extends State<FeedScreen> {
         limit: 20,
       );
 
-      if (mounted && more.isNotEmpty) {
+      final unique = more.where((a) => _seenIds.add(a.id)).toList();
+      if (mounted && unique.isNotEmpty) {
         setState(() {
           _page = nextPage;
-          _items = [..._items, ..._insertAds(more)];
+          _items = [..._items, ..._insertAds(unique)];
         });
       }
     } catch (_) {

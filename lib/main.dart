@@ -7,7 +7,7 @@ import 'app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
 
   // Show errors visibly in release builds (TestFlight) instead of white screen
   ErrorWidget.builder = (FlutterErrorDetails details) {
