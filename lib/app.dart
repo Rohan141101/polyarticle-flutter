@@ -89,11 +89,13 @@ class _RootState extends State<_Root> {
   @override
   void initState() {
     super.initState();
-    SchedulerBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await AppTrackingTransparency.requestTrackingAuthorization();
-      } catch (_) {}
-    });
+    if (Platform.isIOS) {
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await AppTrackingTransparency.requestTrackingAuthorization();
+        } catch (_) {}
+      });
+    }
   }
 
   @override
