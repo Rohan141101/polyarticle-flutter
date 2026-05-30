@@ -204,6 +204,23 @@ Future<void> revokeSessionById(String sessionId) async {
   _handleJson(res);
 }
 
+Future<void> registerDeviceToken(String token, String platform) async {
+  final sessionToken = await getSession();
+  if (sessionToken == null || sessionToken.isEmpty) return;
+  try {
+    await _fetchWithTimeout(
+      Uri.parse('$apiUrl/notifications/token'),
+      {
+        'Authorization': 'Bearer $sessionToken',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      body: json.encode({'token': token, 'platform': platform}),
+      timeout: const Duration(seconds: 10),
+    );
+  } catch (_) {}
+}
+
 Future<void> addBookmark(String articleId) async {
   final token = await getSession();
   if (token == null || token.isEmpty) throw Exception('NO_TOKEN');

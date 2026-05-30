@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/user.dart';
 import '../services/api.dart' as api;
 import '../services/session_storage.dart';
@@ -43,6 +45,7 @@ class AuthProvider extends ChangeNotifier {
       _sessionToken = token;
       _user = userData;
       eventLogger.setToken(token);
+      _registerFcmToken();
     } on TimeoutException {
       _sessionToken = null;
       _user = null;
@@ -64,6 +67,26 @@ class AuthProvider extends ChangeNotifier {
       _user = userData;
     } catch (_) {}
     notifyListeners();
+    _registerFcmToken();
+  }
+
+  Future<void> _registerFcmToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        final fcmToken = await messaging.getToken();
+        if (fcmToken != null) {
+          final platform = Platform.isIOS ? 'ios' : 'android';
+          await api.registerDeviceToken(fcmToken, platform);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> logout() async {
