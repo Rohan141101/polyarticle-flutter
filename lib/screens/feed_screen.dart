@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:home_widget/home_widget.dart';
 
 import '../models/article.dart';
 import '../providers/auth_provider.dart';
@@ -41,6 +42,7 @@ class FeedScreen extends StatefulWidget {
   final void Function(Article article) onOpenArticle;
   final VoidCallback? onLogin;
   final VoidCallback? onSignup;
+  final Article? initialArticle;
 
   const FeedScreen({
     super.key,
@@ -48,6 +50,7 @@ class FeedScreen extends StatefulWidget {
     required this.onOpenArticle,
     this.onLogin,
     this.onSignup,
+    this.initialArticle,
   });
 
   @override
@@ -80,6 +83,9 @@ class _FeedScreenState extends State<FeedScreen> {
   DateTime? _dwellStart;
   String? _currentArticleId;
 
+  Article? _injectedArticle;
+  String? _lastInjectedUrl;
+
   bool get _isGuest {
     final auth = context.read<AuthProvider>();
     final guest = context.read<GuestProvider>();
@@ -89,10 +95,39 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialArticle != null) {
+      _injectedArticle = widget.initialArticle;
+      _lastInjectedUrl = widget.initialArticle!.url;
+    }
     _loadInitialArticles();
     _loadBannerAd();
     _loadInterstitialAd();
     _loadInterstitialDayCount();
+  }
+
+  @override
+  void didUpdateWidget(FeedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final a = widget.initialArticle;
+    if (a != null && a.url != _lastInjectedUrl) {
+      _injectedArticle = a;
+      _lastInjectedUrl = a.url;
+      _tryInjectArticle();
+    }
+  }
+
+  void _tryInjectArticle() {
+    if (_loading || _injectedArticle == null) return;
+    final article = _injectedArticle!;
+    _injectedArticle = null;
+    if (_items.any((a) => a.url == article.url)) {
+      setState(() => _currentIndex = _items.indexWhere((a) => a.url == article.url));
+    } else {
+      setState(() {
+        _items = [article, ..._items];
+        _currentIndex = 0;
+      });
+    }
   }
 
   @override
@@ -159,6 +194,18 @@ class _FeedScreenState extends State<FeedScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _updateWidget(List<Article> articles) async {
+    if (!Platform.isAndroid) return;
+    final top = articles.firstWhere((a) => a.type == 'article', orElse: () => articles.first);
+    try {
+      await HomeWidget.saveWidgetData('widget_title', top.title);
+      await HomeWidget.saveWidgetData('widget_source', top.source);
+      await HomeWidget.updateWidget(
+        androidName: 'NewsWidget',
+      );
+    } catch (_) {}
   }
 
   String _todayString() => DateTime.now().toIso8601String().substring(0, 10);
@@ -262,6 +309,8 @@ class _FeedScreenState extends State<FeedScreen> {
       final unique = articles.where((a) => _seenIds.add(a.id)).toList();
       if (mounted) {
         setState(() => _items = _insertAds(unique));
+        _tryInjectArticle();
+        _updateWidget(unique);
       }
     } catch (e) {
       if (mounted) {

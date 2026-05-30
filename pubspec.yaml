@@ -2,7 +2,7 @@ name: polyarticle_flutter
 description: "PolyArticle - News feed app converted from React Native to Flutter."
 publish_to: 'none'
 
-version: 1.0.7+32
+version: 1.0.7+33
 
 environment:
   sdk: ^3.4.0
@@ -53,6 +53,7 @@ dependencies:
   app_tracking_transparency: ^2.0.6+1
   firebase_messaging: ^16.2.2
   firebase_core: ^4.9.0
+  home_widget: ^0.9.2
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/news_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:clipChildren="true">
+
+    <ImageView
+        android:id="@+id/widget_bg_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_gradient" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Loading..."
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:lineSpacingMultiplier="1.1"
+            android:shadowColor="#99000000"
+            android:shadowRadius="4"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/widget_source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="10sp"
+            android:textColor="#CCFFFFFF"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:shadowColor="#99000000"
+            android:shadowRadius="3"
+            android:shadowDx="0"
+            android:shadowDy="1" />
+
+    </LinearLayout>
+
+</FrameLayout>

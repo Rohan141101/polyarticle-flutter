@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
+import 'package:home_widget/home_widget.dart';
 import 'models/article.dart';
 import 'providers/auth_provider.dart';
 import 'providers/guest_provider.dart';
@@ -86,6 +88,8 @@ class _RootState extends State<_Root> {
   _GuestScreen _guestScreen = _GuestScreen.interests;
   _AuthScreen _authScreen = _AuthScreen.feed;
   Article? _selectedArticle;
+  Article? _widgetArticle;
+  StreamSubscription<Uri?>? _widgetClickSub;
 
   @override
   void initState() {
@@ -97,6 +101,33 @@ class _RootState extends State<_Root> {
         } catch (_) {}
       });
     }
+    if (Platform.isAndroid) {
+      _widgetClickSub = HomeWidget.widgetClicked.listen(_handleWidgetClick);
+      HomeWidget.initiallyLaunchedFromHomeWidget().then(_handleWidgetClick);
+    }
+  }
+
+  @override
+  void dispose() {
+    _widgetClickSub?.cancel();
+    super.dispose();
+  }
+
+  void _handleWidgetClick(Uri? uri) {
+    if (uri == null) return;
+    final url = uri.queryParameters['url'] ?? '';
+    if (url.isEmpty) return;
+    final title = uri.queryParameters['title'] ?? '';
+    final source = uri.queryParameters['source'] ?? '';
+    setState(() {
+      _widgetArticle = Article(
+        id: url.hashCode.toString(),
+        title: title.isNotEmpty ? title : 'Article',
+        summary: '',
+        url: url,
+        source: source,
+      );
+    });
   }
 
   @override
@@ -195,6 +226,7 @@ class _RootState extends State<_Root> {
     switch (_authScreen) {
       case _AuthScreen.feed:
         return FeedScreen(
+          initialArticle: _widgetArticle,
           onProfilePress: () =>
               setState(() => _authScreen = _AuthScreen.profile),
           onOpenArticle: (article) {
@@ -249,6 +281,7 @@ class _RootState extends State<_Root> {
       case _AuthScreen.article:
         if (_selectedArticle == null) {
           return FeedScreen(
+            initialArticle: _widgetArticle,
             onProfilePress: () =>
                 setState(() => _authScreen = _AuthScreen.profile),
             onOpenArticle: (article) {
