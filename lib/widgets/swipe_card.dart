@@ -51,6 +51,7 @@ class _SwipeCardState extends State<SwipeCard>
   NativeAd? _nativeAd;
   bool _adLoaded = false;
   bool _adFailed = false;
+  bool _adRetried = false;
 
   @override
   void initState() {
@@ -84,12 +85,48 @@ class _SwipeCardState extends State<SwipeCard>
         onAdLoaded: (_) {
           if (_mounted) setState(() => _adLoaded = true);
         },
-        onAdFailedToLoad: (_, __) {
-          if (_mounted) setState(() => _adFailed = true);
+        onAdFailedToLoad: (ad, __) {
+          ad.dispose();
+          _nativeAd = null;
+          if (_mounted && !_adRetried) {
+            _adRetried = true;
+            Future.delayed(const Duration(seconds: 30), () {
+              if (_mounted && !_adLoaded) _loadAd();
+            });
+          } else if (_mounted) {
+            setState(() => _adFailed = true);
+          }
         },
       ),
-      nativeTemplateStyle:
-          NativeTemplateStyle(templateType: TemplateType.medium),
+      nativeTemplateStyle: NativeTemplateStyle(
+        templateType: TemplateType.medium,
+        mainBackgroundColor: Colors.white,
+        cornerRadius: 0,
+        callToActionTextStyle: NativeTemplateTextStyle(
+          textColor: Colors.white,
+          backgroundColor: Colors.black,
+          style: NativeTemplateFontStyle.bold,
+          size: 14.0,
+        ),
+        primaryTextStyle: NativeTemplateTextStyle(
+          textColor: const Color(0xFF111111),
+          backgroundColor: Colors.transparent,
+          style: NativeTemplateFontStyle.bold,
+          size: 16.0,
+        ),
+        secondaryTextStyle: NativeTemplateTextStyle(
+          textColor: const Color(0xFF555555),
+          backgroundColor: Colors.transparent,
+          style: NativeTemplateFontStyle.normal,
+          size: 13.0,
+        ),
+        tertiaryTextStyle: NativeTemplateTextStyle(
+          textColor: const Color(0xFF999999),
+          backgroundColor: Colors.transparent,
+          style: NativeTemplateFontStyle.normal,
+          size: 11.0,
+        ),
+      ),
     )..load();
   }
 
@@ -188,8 +225,11 @@ class _SwipeCardState extends State<SwipeCard>
 
   Future<void> _share() async {
     try {
+      final summary = widget.item.summary.isNotEmpty
+          ? '\n\n${widget.item.summary}'
+          : '';
       await Share.share(
-        '${widget.item.title}\n${widget.item.url}',
+        '${widget.item.title}$summary\n\nRead more: ${widget.item.url}\n\nvia PolyArticle',
         subject: widget.item.title,
       );
     } catch (_) {}
@@ -277,24 +317,115 @@ class _SwipeCardState extends State<SwipeCard>
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: widget.item.type == 'ad' ? _adBody() : _articleBody(isDark),
+      child: widget.item.type == 'ad' ? _adBody(isDark) : _articleBody(isDark),
     );
   }
 
-  Widget _adBody() {
+  Widget _adBody(bool isDark) {
+    final shimmer = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE8E8E8);
+    final shimmerLight = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD0D0D0);
+    final bg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+
     if (_adLoaded && _nativeAd != null) {
-      return SizedBox.expand(child: AdWidget(ad: _nativeAd!));
-    }
-    return Container(
-      color: const Color(0xFFF3F4F6),
-      child: Center(
-        child: _adFailed
-            ? const Text('AD UNAVAILABLE',
+      return Stack(
+        children: [
+          SizedBox.expand(child: AdWidget(ad: _nativeAd!)),
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.55),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: const Text(
+                'Sponsored',
                 style: TextStyle(
-                    color: Color(0xFF777777),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700))
-            : const CircularProgressIndicator(color: Colors.grey),
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_adFailed) {
+      return Container(
+        color: bg,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.campaign_outlined,
+                  size: 44, color: isDark ? Colors.white24 : Colors.black12),
+              const SizedBox(height: 10),
+              Text(
+                'No ad available',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.white30 : Colors.black26,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Skeleton loading state
+    return Container(
+      color: bg,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 180,
+            decoration: BoxDecoration(
+              color: shimmer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            height: 12,
+            width: 70,
+            decoration: BoxDecoration(
+              color: shimmerLight,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            height: 16,
+            decoration: BoxDecoration(
+              color: shimmer,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 16,
+            width: double.infinity * 0.7,
+            decoration: BoxDecoration(
+              color: shimmer,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: shimmerLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
       ),
     );
   }

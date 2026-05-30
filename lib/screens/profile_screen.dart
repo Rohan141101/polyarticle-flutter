@@ -26,6 +26,7 @@ const _locations = [
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onActiveSessions;
+  final VoidCallback? onBookmarks;
   final VoidCallback? onLogin;
   final VoidCallback? onSignup;
 
@@ -33,6 +34,7 @@ class ProfileScreen extends StatefulWidget {
     super.key,
     required this.onBack,
     required this.onActiveSessions,
+    this.onBookmarks,
     this.onLogin,
     this.onSignup,
   });
@@ -232,8 +234,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _infoRow(Icons.phone_outlined, 'Phone number',
                           subColor, divColor),
                       _divider(divColor),
-                      _infoRow(Icons.bookmark_outline, 'Saved articles',
-                          subColor, divColor),
+                      _buttonRow(
+                        icon: Icons.bookmark_outline,
+                        label: 'Saved articles',
+                        textColor: textColor,
+                        divColor: divColor,
+                        onTap: widget.onBookmarks ?? () {},
+                      ),
                       _divider(divColor),
                       _buttonRow(
                         icon: Icons.lock_outline,

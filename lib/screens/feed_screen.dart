@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/article.dart';
 import '../providers/auth_provider.dart';
@@ -32,8 +33,8 @@ const _categories = [
 
 const _nativeAdInterval = 6;
 const _interstitialFirstThreshold = 10;
-const _interstitialRepeatEvery = 6;
-const _interstitialCooldownSecs = 90;
+const _maxInterstitialsPerDay = 2;
+const _interstitialMinGapMinutes = 240;
 
 class FeedScreen extends StatefulWidget {
   final VoidCallback onProfilePress;
@@ -67,6 +68,8 @@ class _FeedScreenState extends State<FeedScreen> {
   final Set<String> _seenIds = {};
 
   int _swipeCount = 0;
+  int _interstitialShownToday = 0;
+  String _interstitialShownDate = '';
   DateTime? _lastInterstitialTime;
   bool _interstitialLoaded = false;
 
@@ -89,6 +92,7 @@ class _FeedScreenState extends State<FeedScreen> {
     _loadInitialArticles();
     _loadBannerAd();
     _loadInterstitialAd();
+    _loadInterstitialDayCount();
   }
 
   @override
@@ -119,6 +123,9 @@ class _FeedScreenState extends State<FeedScreen> {
         },
         onAdFailedToLoad: (ad, _) {
           ad.dispose();
+          Future.delayed(const Duration(seconds: 30), () {
+            if (mounted) _loadBannerAd();
+          });
         },
       ),
     )..load();
@@ -132,31 +139,74 @@ class _FeedScreenState extends State<FeedScreen> {
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) => ad.dispose(),
+            onAdFailedToShowFullScreenContent: (ad, _) {
+              ad.dispose();
+              _interstitialAd = null;
+              _interstitialLoaded = false;
+              _loadInterstitialAd();
+            },
+          );
           _interstitialAd = ad;
           _interstitialLoaded = true;
         },
         onAdFailedToLoad: (_) {
           _interstitialLoaded = false;
+          Future.delayed(const Duration(seconds: 60), () {
+            if (mounted) _loadInterstitialAd();
+          });
         },
       ),
     );
   }
 
+  String _todayString() => DateTime.now().toIso8601String().substring(0, 10);
+
+  Future<void> _loadInterstitialDayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = _todayString();
+    if (prefs.getString('interstitial_date') == today) {
+      _interstitialShownToday = prefs.getInt('interstitial_count') ?? 0;
+      final lastMs = prefs.getInt('interstitial_last_ms');
+      if (lastMs != null) {
+        _lastInterstitialTime = DateTime.fromMillisecondsSinceEpoch(lastMs);
+      }
+    }
+    _interstitialShownDate = today;
+  }
+
+  Future<void> _saveInterstitialCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('interstitial_date', _interstitialShownDate);
+    await prefs.setInt('interstitial_count', _interstitialShownToday);
+    if (_lastInterstitialTime != null) {
+      await prefs.setInt(
+          'interstitial_last_ms', _lastInterstitialTime!.millisecondsSinceEpoch);
+    }
+  }
+
   void _maybeShowInterstitial() {
+    if (_swipeCount < _interstitialFirstThreshold) return;
+
+    final today = _todayString();
+    if (_interstitialShownDate != today) {
+      _interstitialShownToday = 0;
+      _interstitialShownDate = today;
+      _lastInterstitialTime = null;
+    }
+
+    if (_interstitialShownToday >= _maxInterstitialsPerDay) return;
+
     final now = DateTime.now();
+    if (_lastInterstitialTime != null &&
+        now.difference(_lastInterstitialTime!).inMinutes <
+            _interstitialMinGapMinutes) return;
 
-    final pastCooldown = _lastInterstitialTime == null ||
-        now.difference(_lastInterstitialTime!).inSeconds >=
-            _interstitialCooldownSecs;
-
-    final shouldShow = _swipeCount >= _interstitialFirstThreshold &&
-        (_swipeCount - _interstitialFirstThreshold) %
-                _interstitialRepeatEvery ==
-            0 &&
-        pastCooldown;
-
-    if (shouldShow && _interstitialLoaded && _interstitialAd != null) {
+    if (_interstitialLoaded && _interstitialAd != null) {
       _lastInterstitialTime = now;
+      _interstitialShownToday++;
+      _saveInterstitialCount();
       _interstitialAd!.show();
       _interstitialAd = null;
       _interstitialLoaded = false;
@@ -306,6 +356,9 @@ class _FeedScreenState extends State<FeedScreen> {
 
     if (currentItem != null && currentItem.type == 'article') {
       eventLogger.log(direction, currentItem.id);
+      if (direction == 'save' && !_isGuest) {
+        api.addBookmark(currentItem.id).catchError((_) {});
+      }
     }
 
     final settings = context.read<SettingsProvider>();

@@ -204,6 +204,57 @@ Future<void> revokeSessionById(String sessionId) async {
   _handleJson(res);
 }
 
+Future<void> addBookmark(String articleId) async {
+  final token = await getSession();
+  if (token == null || token.isEmpty) throw Exception('NO_TOKEN');
+  final res = await _fetchWithTimeout(
+    Uri.parse('$apiUrl/bookmarks/$articleId'),
+    {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+    method: 'POST',
+    timeout: const Duration(seconds: 10),
+  );
+  _handleJson(res);
+}
+
+Future<void> removeBookmark(String articleId) async {
+  final token = await getSession();
+  if (token == null || token.isEmpty) throw Exception('NO_TOKEN');
+  final res = await _fetchWithTimeout(
+    Uri.parse('$apiUrl/bookmarks/$articleId'),
+    {'Authorization': 'Bearer $token'},
+    method: 'DELETE',
+    timeout: const Duration(seconds: 10),
+  );
+  _handleJson(res);
+}
+
+Future<List<Article>> getBookmarks() async {
+  final token = await getSession();
+  if (token == null || token.isEmpty) throw Exception('NO_TOKEN');
+  final res = await _fetchWithTimeout(
+    Uri.parse('$apiUrl/bookmarks'),
+    {'Authorization': 'Bearer $token'},
+    timeout: const Duration(seconds: 15),
+  );
+  final data = _handleJson(res);
+  final list = data is List ? data : (data['bookmarks'] as List? ?? data['data'] as List? ?? []);
+  return list.map((a) {
+    final map = a as Map<String, dynamic>;
+    String? imageUrl = map['image_url'] as String?;
+    if (imageUrl != null) imageUrl = imageUrl.replaceAll('&amp;', '&');
+    return Article(
+      id: (map['article_id'] ?? map['id']).toString(),
+      title: map['title'] as String? ?? '',
+      summary: map['summary'] as String? ?? '',
+      image: imageUrl,
+      url: map['url'] as String? ?? '',
+      source: map['source'] as String? ?? '',
+      publishedAt: map['published_at'] as String?,
+      category: map['category'] as String?,
+    );
+  }).toList();
+}
+
 Future<List<Article>> fetchNews(
   String? category, {
   int page = 1,

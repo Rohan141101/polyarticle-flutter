@@ -17,10 +17,11 @@ import 'screens/feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/active_sessions_screen.dart';
 import 'screens/article_screen.dart';
+import 'screens/bookmarks_screen.dart';
 
 enum _UnauthScreen { welcome, login, signup, forgot }
 enum _GuestScreen { interests, region }
-enum _AuthScreen { feed, profile, sessions, article, guestLogin, guestSignup, guestForgot }
+enum _AuthScreen { feed, profile, sessions, article, bookmarks, guestLogin, guestSignup, guestForgot }
 
 class PolyArticleApp extends StatelessWidget {
   const PolyArticleApp({super.key});
@@ -216,10 +217,16 @@ class _RootState extends State<_Root> {
           onBack: () => setState(() => _authScreen = _AuthScreen.feed),
           onActiveSessions: () =>
               setState(() => _authScreen = _AuthScreen.sessions),
+          onBookmarks: () =>
+              setState(() => _authScreen = _AuthScreen.bookmarks),
           onLogin: () =>
               setState(() => _authScreen = _AuthScreen.guestLogin),
           onSignup: () =>
               setState(() => _authScreen = _AuthScreen.guestSignup),
+        );
+      case _AuthScreen.bookmarks:
+        return BookmarksScreen(
+          onBack: () => setState(() => _authScreen = _AuthScreen.profile),
         );
       case _AuthScreen.guestLogin:
         return LoginScreen(
