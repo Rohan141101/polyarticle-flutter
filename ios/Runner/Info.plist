@@ -23,6 +23,26 @@
 	<key>NSUserTrackingUsageDescription</key>
 	<string>We use this to show you relevant news and ads tailored to your interests.</string>
 
+	<!-- Background fetch + remote push for firebase_messaging -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+
+	<!-- homewidget:// URL scheme for widget tap deep linking -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>homewidget</string>
+			</array>
+		</dict>
+	</array>
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
